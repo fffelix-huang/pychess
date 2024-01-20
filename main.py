@@ -91,11 +91,24 @@ def update_board_grid():
 		for j in range(8):
 			board_grid[i][j] = eval(f"board.piece_at(chess.{chr(ord('A') + j)}{8 - i})")
 
-SQUARE_WIDTH = 70
+def update_can_move(legal_moves, dragging_piece):
+	global can_move
+	can_move = np.zeros((8, 8))
+	for m in legal_moves:
+		row = 7 - (ord(m[1]) - ord('1'))
+		col = ord(m[0]) - ord('a')
+		if dragging_piece == (row, col):
+			row2 = 7 - (ord(m[3]) - ord('1'))
+			col2 = ord(m[2]) - ord('a')
+			can_move[row2][col2] = 1
 
 dragging_piece = (-1, -1)
+touching_piece = (-1, -1)
 
-class BoardSquare(pg.sprite.Sprite):
+SQUARE_WIDTH = 70
+CIRCLE_RADIUS = 10
+
+class Square(pg.sprite.Sprite):
 	def __init__(self, row, col):
 		pg.sprite.Sprite.__init__(self)
 		self.image = pg.Surface((SQUARE_WIDTH, SQUARE_WIDTH))
@@ -110,66 +123,60 @@ class BoardSquare(pg.sprite.Sprite):
 		self.col = col
 
 	def update(self):
+		# Get tile color
+		color = COLOR_WHITE
 		if (self.row + self.col) % 2 == 0:
-			self.image.fill(COLOR_LIGHT_YELLOW)
+			color = COLOR_LIGHT_YELLOW
 		else:
-			self.image.fill(COLOR_BROWN)
+			color = COLOR_BROWN
+
+		# Draw margin
+		if touching_piece == (self.row, self.col):
+			self.image.fill(COLOR_GRAY)
+			pg.draw.rect(self.image, color, pg.Rect(5, 5, SQUARE_WIDTH - 10, SQUARE_WIDTH - 10))
+		else:
+			self.image.fill(color)
+
+		# Draw piece
 		if dragging_piece != (self.row, self.col):
 			img = symbol_to_image(board_grid[self.row][self.col])
 			if img != None:
 				self.image.blit(img, (SQUARE_WIDTH // 2 - img.get_width() // 2, SQUARE_WIDTH // 2 - img.get_height() // 2))
 
-CIRCLE_RADIUS = 15
-
-class BoardCircle(pg.sprite.Sprite):
-	def __init__(self, row, col):
-		pg.sprite.Sprite.__init__(self)
-		self.image = pg.Surface((SQUARE_WIDTH, SQUARE_WIDTH))
-		self.image.set_colorkey(COLOR_BLACK)
-		self.image.set_alpha(0)
-		self.row = row
-		self.col = col
-		self.rect = self.image.get_rect()
-		self.rect.x = 50 + col * SQUARE_WIDTH
-		self.rect.y = 50 + row * SQUARE_WIDTH
-		pg.draw.circle(self.image, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), CIRCLE_RADIUS)
-
-	def update(self):
-		self.image.fill(COLOR_BLACK)
+		# Draw dots
 		if can_move[self.row][self.col]:
-			self.image.set_alpha(150)
+			circle = pg.Surface((SQUARE_WIDTH, SQUARE_WIDTH))
+			circle.set_colorkey(COLOR_BLACK)
+			circle.set_alpha(150)
 			if board_grid[self.row][self.col] == None:
-				pg.draw.circle(self.image, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), CIRCLE_RADIUS)
+				pg.draw.circle(circle, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), CIRCLE_RADIUS)
 			else:
-				pg.draw.circle(self.image, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), SQUARE_WIDTH // 2)
-				pg.draw.circle(self.image, COLOR_BLACK, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), (SQUARE_WIDTH - CIRCLE_RADIUS) // 2)
-		else:
-			self.image.set_alpha(0)
-			pg.draw.circle(self.image, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), CIRCLE_RADIUS)
+				pg.draw.circle(circle, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), SQUARE_WIDTH // 2)
+				pg.draw.circle(circle, COLOR_BLACK, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), (SQUARE_WIDTH - CIRCLE_RADIUS) // 2)
+			self.image.blit(circle, (0, 0))
 
-pieces = pg.sprite.Group()
-circles = pg.sprite.Group()
+sprites = pg.sprite.Group()
 
 for i in range(8):
 	for j in range(8):
-		pieces.add(BoardSquare(i, j))
-		circles.add(BoardCircle(i, j))
+		sprites.add(Square(i, j))
 
 MOUSE_LEFT, MOUSE_RIGHT = 1, 3
 
 while True:
 	clock.tick(FPS)
+
+	# Get legal moves
+	legal_moves = list(str(list(board.legal_moves))[1:-1].replace("Move.from_uci(\'", "").replace("\')", "").split(","))
+	legal_moves = [s.strip() for s in legal_moves]
+
 	for event in pg.event.get():
 		if event.type == pg.QUIT:
 			pg.quit()
 			quit()
 		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_LEFT:
 			print("You pressed the left mouse button at (%d, %d)", event.pos)
-			pos = pg.mouse.get_pos()
-			clicked_sprites = [s for s in pieces if s.rect.collidepoint(pos)]
-			if len(clicked_sprites) > 0:
-				print(clicked_sprites[0].row, clicked_sprites[0].col)
-				dragging_piece = (clicked_sprites[0].row, clicked_sprites[0].col)
+			dragging_piece = touching_piece
 		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_LEFT:
 			print("You released the left mouse button at (%d, %d)", event.pos)
 			dragging_piece = (-1, -1)
@@ -178,13 +185,17 @@ while True:
 		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_RIGHT:
 			print("You released the right mouse button at (%d, %d)", event.pos)
 
+	touching_piece = (-1, -1)
+	for s in sprites:
+		if s.rect.collidepoint(pg.mouse.get_pos()):
+			touching_piece = (s.row, s.col)
+
 	update_board_grid()
-	pieces.update()
-	circles.update()
+	update_can_move(legal_moves, dragging_piece)
+	sprites.update()
 
 	screen.fill(COLOR_WHITE)
-	pieces.draw(screen)
-	circles.draw(screen)
+	sprites.draw(screen)
 	if dragging_piece != (-1, -1):
 		img = symbol_to_image(board_grid[dragging_piece[0]][dragging_piece[1]])
 		if img != None:
