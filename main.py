@@ -114,6 +114,10 @@ def update_can_move(legal_moves, dragging_piece):
 dragging_piece = (-1, -1)
 touching_piece = (-1, -1)
 
+selecting_promotion = False
+promotion_move = 'a1a1'
+promotion_options = [[None] * 8 for _ in range(8)]
+
 SQUARE_WIDTH = 70
 CIRCLE_RADIUS = 10
 
@@ -132,6 +136,13 @@ class Square(pg.sprite.Sprite):
 		self.col = col
 
 	def update(self):
+		# Handle promotion option button
+		if selecting_promotion and promotion_options[self.row][self.col] != None:
+			self.image.fill(COLOR_WHITE)
+			img = symbol_to_image(promotion_options[self.row][self.col])
+			self.image.blit(img, (SQUARE_WIDTH // 2 - img.get_width() // 2, SQUARE_WIDTH // 2 - img.get_height() // 2))
+			return
+
 		# Get tile color
 		color = COLOR_WHITE
 		if (self.row + self.col) % 2 == 0:
@@ -139,7 +150,7 @@ class Square(pg.sprite.Sprite):
 		else:
 			color = COLOR_BROWN
 
-		# Draw margin
+		# Draw margin and square
 		if touching_piece == (self.row, self.col):
 			self.image.fill(COLOR_GRAY)
 			pg.draw.rect(self.image, color, pg.Rect(5, 5, SQUARE_WIDTH - 10, SQUARE_WIDTH - 10))
@@ -187,10 +198,38 @@ while True:
 		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_LEFT:
 			dragging_piece = touching_piece
 		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_LEFT:
-			move = coordinate_to_uci(dragging_piece) + coordinate_to_uci(touching_piece)
-			if move in [s[0:4] for s in legal_moves]:
-				move = chess.Move.from_uci(move)
-				board.push(move)
+			if selecting_promotion == False:
+				move = coordinate_to_uci(dragging_piece) + coordinate_to_uci(touching_piece)
+				moves = [s for s in legal_moves if s[0:4] == move]
+				if len(moves) > 0:
+					if len(moves) == 4:
+						selecting_promotion = True
+						promotion_move = move
+						col = touching_piece[1]
+						if touching_piece[0] == 0:
+							# White side
+							promotion_options[0][col] = chess.Piece.from_symbol('Q')
+							promotion_options[1][col] = chess.Piece.from_symbol('N')
+							promotion_options[2][col] = chess.Piece.from_symbol('R')
+							promotion_options[3][col] = chess.Piece.from_symbol('B')
+						else:
+							# Black side
+							promotion_options[7][col] = chess.Piece.from_symbol('q')
+							promotion_options[6][col] = chess.Piece.from_symbol('n')
+							promotion_options[5][col] = chess.Piece.from_symbol('r')
+							promotion_options[4][col] = chess.Piece.from_symbol('b')
+					move = chess.Move.from_uci(move)
+					board.push(move)
+			else:
+				board.pop()
+				# Select a promotion
+				if promotion_options[touching_piece[0]][touching_piece[1]] != None:
+					promotion_type = str(promotion_options[touching_piece[0]][touching_piece[1]])
+					promotion_move = (promotion_move + promotion_type).lower()
+					move = chess.Move.from_uci(promotion_move)
+					board.push(move)
+				selecting_promotion = False
+				promotion_options = [[None] * 8 for _ in range(8)]
 			dragging_piece = (-1, -1)
 		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_RIGHT:
 			print("You pressed the right mouse button at (%d, %d)", event.pos)
@@ -206,7 +245,7 @@ while True:
 	update_can_move(legal_moves, dragging_piece)
 	sprites.update()
 
-	screen.fill(COLOR_WHITE)
+	screen.fill(COLOR_GRAY)
 	sprites.draw(screen)
 	if dragging_piece != (-1, -1):
 		img = symbol_to_image(board_grid[dragging_piece[0]][dragging_piece[1]])
