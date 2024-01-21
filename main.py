@@ -71,6 +71,7 @@ FPS = 60
 
 pg.init()
 pg.display.set_caption("pychess")
+pg.display.set_icon(WHITE_KNIGHT_IMG)
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 670
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
