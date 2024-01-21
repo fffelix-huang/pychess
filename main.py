@@ -190,7 +190,7 @@ while True:
 
 	# Get legal moves
 	legal_moves = list(str(list(board.legal_moves))[1:-1].replace("Move.from_uci(\'", "").replace("\')", "").split(","))
-	legal_moves = [s.strip() for s in legal_moves]
+	legal_moves = [s.strip() for s in legal_moves if len(s) > 0]
 
 	for event in pg.event.get():
 		if event.type == pg.QUIT:
