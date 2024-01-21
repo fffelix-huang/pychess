@@ -81,25 +81,34 @@ clock = pg.time.Clock()
 
 board_grid = [[chess.Piece.from_symbol('k')] * 8 for _ in range(8)]
 can_move = np.zeros((8, 8))
-can_move[1][1] = 1
-can_move[4][4] = 1
 
 board = chess.Board()
+
+def uci_to_coordinate(s):
+	row = 7 - (ord(s[1]) - ord('1'))
+	col = ord(s[0]) - ord('a')
+	return (row, col)
+
+def coordinate_to_uci(c, upper=False):
+	x = chr(ord('a') + c[1])
+	y = chr(ord('0') + (8 - c[0]))
+	s = x + y
+	if upper:
+		s = s.upper()
+	return s
 
 def update_board_grid():
 	for i in range(8):
 		for j in range(8):
-			board_grid[i][j] = eval(f"board.piece_at(chess.{chr(ord('A') + j)}{8 - i})")
+			board_grid[i][j] = eval(f"board.piece_at(chess.{coordinate_to_uci((i, j), upper=True)})")
 
 def update_can_move(legal_moves, dragging_piece):
 	global can_move
 	can_move = np.zeros((8, 8))
 	for m in legal_moves:
-		row = 7 - (ord(m[1]) - ord('1'))
-		col = ord(m[0]) - ord('a')
+		(row, col) = uci_to_coordinate(m[0:2])
 		if dragging_piece == (row, col):
-			row2 = 7 - (ord(m[3]) - ord('1'))
-			col2 = ord(m[2]) - ord('a')
+			(row2, col2) = uci_to_coordinate(m[2:4])
 			can_move[row2][col2] = 1
 
 dragging_piece = (-1, -1)
@@ -164,6 +173,7 @@ for i in range(8):
 MOUSE_LEFT, MOUSE_RIGHT = 1, 3
 
 while True:
+	# Set fps
 	clock.tick(FPS)
 
 	# Get legal moves
@@ -175,10 +185,12 @@ while True:
 			pg.quit()
 			quit()
 		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_LEFT:
-			print("You pressed the left mouse button at (%d, %d)", event.pos)
 			dragging_piece = touching_piece
 		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_LEFT:
-			print("You released the left mouse button at (%d, %d)", event.pos)
+			move = coordinate_to_uci(dragging_piece) + coordinate_to_uci(touching_piece)
+			if move in [s[0:4] for s in legal_moves]:
+				move = chess.Move.from_uci(move)
+				board.push(move)
 			dragging_piece = (-1, -1)
 		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_RIGHT:
 			print("You pressed the right mouse button at (%d, %d)", event.pos)
