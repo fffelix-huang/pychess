@@ -1,7 +1,6 @@
 import pygame as pg
 from pygame.locals import *
 import sys
-import numpy as np
 import chess
 
 ### Colors ###
@@ -87,7 +86,7 @@ font = pg.font.SysFont("arial", 20)
 clock = pg.time.Clock()
 
 board_grid = [[chess.Piece.from_symbol('k')] * 8 for _ in range(8)]
-can_move = np.zeros((8, 8))
+can_move = [[0] * 8 for _ in range(8)]
 
 board = chess.Board()
 
@@ -113,7 +112,7 @@ def update_board_grid():
 
 def update_can_move(legal_moves, dragging_piece):
 	global can_move
-	can_move = np.zeros((8, 8))
+	can_move = [[0] * 8 for _ in range(8)]
 	for m in legal_moves:
 		(row, col) = uci_to_coordinate(m[0:2])
 
