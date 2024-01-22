@@ -1,10 +1,10 @@
 import pygame as pg
+from pygame.locals import *
 import sys
 import numpy as np
-from pygame.locals import *
 import chess
 
-### colors ###
+### Colors ###
 
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
@@ -19,7 +19,7 @@ COLOR_PURPLE = (150, 0, 200)
 COLOR_ORANGE = (255, 150, 0)
 COLOR_BROWN = (115, 70, 42)
 
-### images ###
+### Images ###
 
 WHITE_PAWN_IMG   = pg.image.load("resources/white_pawn.png")
 WHITE_ROOK_IMG   = pg.image.load("resources/white_rook.png")
@@ -36,6 +36,7 @@ BLACK_KING_IMG   = pg.image.load("resources/black_king.png")
 
 def symbol_to_image(symbol):
 	img = None
+
 	if symbol != None:
 		if symbol == chess.Piece.from_symbol('P'):
 			img = WHITE_PAWN_IMG
@@ -63,9 +64,10 @@ def symbol_to_image(symbol):
 			img = BLACK_KING_IMG
 		else:
 			assert False
+
 	return img
 
-### screen ###
+### Screen ###
 
 FPS = 60
 
@@ -76,11 +78,11 @@ pg.display.set_icon(WHITE_KNIGHT_IMG)
 SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 670
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-### font ###
+### Font ###
 
 font = pg.font.SysFont("arial", 20)
 
-### clock ###
+### Clock ###
 
 clock = pg.time.Clock()
 
@@ -98,8 +100,10 @@ def coordinate_to_uci(c, upper=False):
 	x = chr(ord('a') + c[1])
 	y = chr(ord('0') + (8 - c[0]))
 	s = x + y
+
 	if upper:
 		s = s.upper()
+
 	return s
 
 def update_board_grid():
@@ -112,13 +116,22 @@ def update_can_move(legal_moves, dragging_piece):
 	can_move = np.zeros((8, 8))
 	for m in legal_moves:
 		(row, col) = uci_to_coordinate(m[0:2])
+
 		if dragging_piece == (row, col):
 			(row2, col2) = uci_to_coordinate(m[2:4])
 			can_move[row2][col2] = 1
 
+def draw_dragging_piece(dragging_piece):
+	if dragging_piece != (-1, -1):
+		img = symbol_to_image(board_grid[dragging_piece[0]][dragging_piece[1]])
+
+		if img != None:
+			pos = pg.mouse.get_pos()
+			pos = (pos[0] - img.get_width() // 2, pos[1] - img.get_height() // 2)
+			screen.blit(img, pos)
+
 dragging_piece = (-1, -1)
 touching_piece = (-1, -1)
-
 last_move = (-1, -1)
 
 selecting_promotion = False
@@ -132,10 +145,12 @@ class Square(pg.sprite.Sprite):
 	def __init__(self, row, col):
 		pg.sprite.Sprite.__init__(self)
 		self.image = pg.Surface((SQUARE_WIDTH, SQUARE_WIDTH))
+
 		if (row + col) % 2 == 0:
 			self.image.fill(COLOR_LIGHT_YELLOW)
 		else:
 			self.image.fill(COLOR_BROWN)
+
 		self.rect = self.image.get_rect()
 		self.rect.x = 50 + col * SQUARE_WIDTH
 		self.rect.y = 50 + row * SQUARE_WIDTH
@@ -170,6 +185,7 @@ class Square(pg.sprite.Sprite):
 		# Draw piece
 		if dragging_piece != (self.row, self.col):
 			img = symbol_to_image(board_grid[self.row][self.col])
+
 			if img != None:
 				self.image.blit(img, (SQUARE_WIDTH // 2 - img.get_width() // 2, SQUARE_WIDTH // 2 - img.get_height() // 2))
 
@@ -178,6 +194,7 @@ class Square(pg.sprite.Sprite):
 			circle = pg.Surface((SQUARE_WIDTH, SQUARE_WIDTH))
 			circle.set_colorkey(COLOR_BLACK)
 			circle.set_alpha(150)
+
 			if board_grid[self.row][self.col] == None:
 				pg.draw.circle(circle, COLOR_GRAY, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), CIRCLE_RADIUS)
 			else:
@@ -193,7 +210,7 @@ class Result(pg.sprite.Sprite):
 		self.terminate = False
 
 	def update(self):
-		# Check if game terminates
+		# Update game status
 		text = ""
 		bar_color = COLOR_WHITE
 		text_color = COLOR_BLACK
@@ -218,6 +235,8 @@ class Result(pg.sprite.Sprite):
 			text = "Draw by fifty moves rule"
 		else:
 			return
+
+		# Render text and draw
 		text = font.render(text, True, text_color)
 		self.image = pg.Surface((text.get_width() + 10, text.get_height() + 10))
 		self.image.fill(bar_color)
@@ -236,6 +255,7 @@ for i in range(8):
 result = Result()
 sprites.add(result)
 
+# Constant for pygame event
 MOUSE_LEFT, MOUSE_RIGHT = 1, 3
 
 while True:
@@ -255,13 +275,17 @@ while True:
 			dragging_piece = touching_piece
 		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_LEFT:
 			if selecting_promotion == False:
+				# Not selecting pawn promotion
 				move = coordinate_to_uci(dragging_piece) + coordinate_to_uci(touching_piece)
 				moves = [s for s in legal_moves if s[0:4] == move]
+
 				if len(moves) > 0:
 					if len(moves) == 4:
+						# Pawn promotion
 						selecting_promotion = True
 						promotion_move = move
 						col = touching_piece[1]
+
 						if touching_piece[0] == 0:
 							# White side
 							promotion_options[0][col] = chess.Piece.from_symbol('Q')
@@ -274,25 +298,27 @@ while True:
 							promotion_options[6][col] = chess.Piece.from_symbol('n')
 							promotion_options[5][col] = chess.Piece.from_symbol('r')
 							promotion_options[4][col] = chess.Piece.from_symbol('b')
+
 					board.push(chess.Move.from_uci(move))
+
 					if len(moves) == 1:
 						last_move = (uci_to_coordinate(move[0:2]), uci_to_coordinate(move[2:4]))
 			else:
 				board.pop()
+
 				# Select a promotion
 				if promotion_options[touching_piece[0]][touching_piece[1]] != None:
 					promotion_type = str(promotion_options[touching_piece[0]][touching_piece[1]])
 					promotion_move = (promotion_move + promotion_type).lower()
 					board.push(chess.Move.from_uci(promotion_move))
 					last_move = (uci_to_coordinate(promotion_move[0:2]), uci_to_coordinate(promotion_move[2:4]))
+
 				selecting_promotion = False
 				promotion_options = [[None] * 8 for _ in range(8)]
-			dragging_piece = (-1, -1)
-		elif event.type == pg.MOUSEBUTTONDOWN and event.button == MOUSE_RIGHT:
-			print("You pressed the right mouse button at (%d, %d)", event.pos)
-		elif event.type == pg.MOUSEBUTTONUP and event.button == MOUSE_RIGHT:
-			print("You released the right mouse button at (%d, %d)", event.pos)
 
+			dragging_piece = (-1, -1)
+
+	# Update touching_piece
 	touching_piece = (-1, -1)
 	for s in sprites:
 		if s.rect.collidepoint(pg.mouse.get_pos()):
@@ -302,12 +328,8 @@ while True:
 	update_can_move(legal_moves, dragging_piece)
 	sprites.update()
 
+	# Draw
 	screen.fill(COLOR_GRAY)
 	sprites.draw(screen)
-	if dragging_piece != (-1, -1):
-		img = symbol_to_image(board_grid[dragging_piece[0]][dragging_piece[1]])
-		if img != None:
-			pos = pg.mouse.get_pos()
-			pos = (pos[0] - img.get_width() // 2, pos[1] - img.get_height() // 2)
-			screen.blit(img, pos)
+	draw_dragging_piece(dragging_piece)
 	pg.display.update()
