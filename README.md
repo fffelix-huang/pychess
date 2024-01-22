@@ -14,11 +14,13 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-## Gameplay
+## Screenshots
 
-![gameplay](images/gameplay.png)
-![result](images/result.png)
+| Gameplay | Result |
+| :---: | :---: |
+| ![gameplay](images/gameplay.png) | ![result](images/result.png) |
+| Drag pieces around. | Result will be shown when the game terminates. |
 
 ## Contribution
 
-Any feedback are welcome, and feel free to send pull requests!
+Any feedback is welcome, and please feel free to submit pull requests!
