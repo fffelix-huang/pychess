@@ -1,6 +1,6 @@
 # pychess
 
-pychess is a chess game implemented in Python with pygame library. It supports castling, en passant, 50 moves rule, threefold repetition, etc.
+pychess is a chess game implemented in Python with pygame library. It supports pawn promotion, castling, en passant, 50 moves rule, threefold repetition, etc.
 
 ## Install
 
