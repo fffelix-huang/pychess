@@ -115,6 +115,8 @@ def update_can_move(legal_moves, dragging_piece):
 dragging_piece = (-1, -1)
 touching_piece = (-1, -1)
 
+last_move = (-1, -1)
+
 selecting_promotion = False
 promotion_move = 'a1a1'
 promotion_options = [[None] * 8 for _ in range(8)]
@@ -146,10 +148,13 @@ class Square(pg.sprite.Sprite):
 
 		# Get tile color
 		color = COLOR_WHITE
-		if (self.row + self.col) % 2 == 0:
-			color = COLOR_LIGHT_YELLOW
+		if (self.row, self.col) == last_move[0] or (self.row, self.col) == last_move[1]:
+			color = COLOR_YELLOW
 		else:
-			color = COLOR_BROWN
+			if (self.row + self.col) % 2 == 0:
+				color = COLOR_LIGHT_YELLOW
+			else:
+				color = COLOR_BROWN
 
 		# Draw margin and square
 		if touching_piece == (self.row, self.col):
@@ -219,16 +224,17 @@ while True:
 							promotion_options[6][col] = chess.Piece.from_symbol('n')
 							promotion_options[5][col] = chess.Piece.from_symbol('r')
 							promotion_options[4][col] = chess.Piece.from_symbol('b')
-					move = chess.Move.from_uci(move)
-					board.push(move)
+					board.push(chess.Move.from_uci(move))
+					if len(moves) == 1:
+						last_move = (uci_to_coordinate(move[0:2]), uci_to_coordinate(move[2:4]))
 			else:
 				board.pop()
 				# Select a promotion
 				if promotion_options[touching_piece[0]][touching_piece[1]] != None:
 					promotion_type = str(promotion_options[touching_piece[0]][touching_piece[1]])
 					promotion_move = (promotion_move + promotion_type).lower()
-					move = chess.Move.from_uci(promotion_move)
-					board.push(move)
+					board.push(chess.Move.from_uci(move))
+					last_move = (uci_to_coordinate(move[0:2]), uci_to_coordinate(move[2:4]))
 				selecting_promotion = False
 				promotion_options = [[None] * 8 for _ in range(8)]
 			dragging_piece = (-1, -1)
