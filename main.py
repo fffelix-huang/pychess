@@ -76,6 +76,10 @@ pg.display.set_icon(WHITE_KNIGHT_IMG)
 SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 670
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+### font ###
+
+font = pg.font.SysFont("arial", 20)
+
 ### clock ###
 
 clock = pg.time.Clock()
@@ -181,11 +185,56 @@ class Square(pg.sprite.Sprite):
 				pg.draw.circle(circle, COLOR_BLACK, (SQUARE_WIDTH // 2, SQUARE_WIDTH // 2), (SQUARE_WIDTH - CIRCLE_RADIUS) // 2)
 			self.image.blit(circle, (0, 0))
 
+class Result(pg.sprite.Sprite):
+	def __init__(self):
+		pg.sprite.Sprite.__init__(self)
+		self.image = pg.Surface((0, 0))
+		self.rect = self.image.get_rect()
+		self.terminate = False
+
+	def update(self):
+		# Check if game terminates
+		text = ""
+		bar_color = COLOR_WHITE
+		text_color = COLOR_BLACK
+		if board.is_checkmate():
+			self.terminate = True
+			if board.fen().split()[1] == 'w':
+				text = "Black wins by checkmate"
+				bar_color, text_color = text_color, bar_color
+			else:
+				text = "White wins by checkmate"
+		elif board.is_stalemate():
+			self.terminate = True
+			text = "Draw by stalemate"
+		elif board.is_insufficient_material():
+			self.terminate = True
+			text = "Draw by insufficient material"
+		elif board.can_claim_threefold_repetition():
+			self.terminate = True
+			text = "Draw by threefold repetition"
+		elif board.can_claim_fifty_moves():
+			self.terminate = True
+			text = "Draw by fifty moves rule"
+		else:
+			return
+		text = font.render(text, True, text_color)
+		self.image = pg.Surface((text.get_width() + 10, text.get_height() + 10))
+		self.image.fill(bar_color)
+		self.image.blit(text, dest=(5, 5))
+		side_width = SCREEN_WIDTH - (50 + SQUARE_WIDTH * 8)
+		margin = (side_width - self.image.get_width()) // 2
+		self.rect.x = 50 + SQUARE_WIDTH * 8 + margin
+		self.rect.y = 100
+
 sprites = pg.sprite.Group()
 
 for i in range(8):
 	for j in range(8):
 		sprites.add(Square(i, j))
+
+result = Result()
+sprites.add(result)
 
 MOUSE_LEFT, MOUSE_RIGHT = 1, 3
 
@@ -194,8 +243,9 @@ while True:
 	clock.tick(FPS)
 
 	# Get legal moves
-	legal_moves = list(str(list(board.legal_moves))[1:-1].replace("Move.from_uci(\'", "").replace("\')", "").split(","))
-	legal_moves = [s.strip() for s in legal_moves if len(s) > 0]
+	if result.terminate == False:
+		legal_moves = list(str(list(board.legal_moves))[1:-1].replace("Move.from_uci(\'", "").replace("\')", "").split(","))
+		legal_moves = [s.strip() for s in legal_moves if len(s) > 0]
 
 	for event in pg.event.get():
 		if event.type == pg.QUIT:
@@ -233,8 +283,8 @@ while True:
 				if promotion_options[touching_piece[0]][touching_piece[1]] != None:
 					promotion_type = str(promotion_options[touching_piece[0]][touching_piece[1]])
 					promotion_move = (promotion_move + promotion_type).lower()
-					board.push(chess.Move.from_uci(move))
-					last_move = (uci_to_coordinate(move[0:2]), uci_to_coordinate(move[2:4]))
+					board.push(chess.Move.from_uci(promotion_move))
+					last_move = (uci_to_coordinate(promotion_move[0:2]), uci_to_coordinate(promotion_move[2:4]))
 				selecting_promotion = False
 				promotion_options = [[None] * 8 for _ in range(8)]
 			dragging_piece = (-1, -1)
