@@ -5,12 +5,12 @@ pychess is a chess game implemented in Python with pygame library. It supports p
 ## Install
 
 1. Clone the repository
-2. Install requirements
+2. Install dependencies
 3. Run the game
 
 ```
 git clone https://github.com/fffelix-huang/pychess.git
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 python3 main.py
 ```
 
